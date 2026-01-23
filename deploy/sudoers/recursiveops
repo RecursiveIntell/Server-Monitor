@@ -1,0 +1,14 @@
+# Allow RecursiveOps to read system status without prompting for a password.
+Defaults:recursiveops !requiretty
+
+recursiveops ALL=(root) NOPASSWD: \
+  /usr/bin/systemctl list-units --type=service --all --no-legend --no-pager, \
+  /usr/bin/systemctl show * --property=Id,LoadState,ActiveState,SubState,Description, \
+  /usr/bin/systemctl status *, \
+  /usr/bin/systemctl restart *, \
+  /usr/bin/systemctl reload *, \
+  /usr/bin/journalctl -u * -n * --no-pager -o short-iso, \
+  /usr/bin/journalctl -n * --no-pager -o short-iso, \
+  /usr/bin/podman ps --all --format json, \
+  /usr/bin/podman logs --tail * *, \
+  /usr/bin/firewall-cmd --list-all

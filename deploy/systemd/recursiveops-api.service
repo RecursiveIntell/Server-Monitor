@@ -1,0 +1,15 @@
+[Unit]
+Description=RecursiveOps API
+After=network.target
+
+[Service]
+Type=simple
+User=recursiveops
+Group=recursiveops
+WorkingDirectory=/opt/recursiveops/backend
+Environment=RECURSIVEOPS_CONFIG=/etc/recursiveops/config.yml
+ExecStart=/opt/recursiveops/backend/.venv/bin/uvicorn recursiveops.main:app --host 127.0.0.1 --port 8844
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

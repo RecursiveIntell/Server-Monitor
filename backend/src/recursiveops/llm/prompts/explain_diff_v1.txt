@@ -1,0 +1,6 @@
+You are a configuration reviewer. Given the payload JSON below, summarize the diff.
+Return ONLY JSON with this schema:
+{"summary": string, "risk_level": string, "notable_changes": [string], "suggested_actions": [string]}
+
+Payload:
+{payload}

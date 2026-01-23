@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+.env.*
+.secrets/
+.pytest_cache/
+
+# Node
+node_modules/
+.svelte-kit/
+build/
+
+# SQLite
+*.db
+*.sqlite
+
+# OS
+.DS_Store

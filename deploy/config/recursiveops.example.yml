@@ -1,0 +1,31 @@
+server:
+  bind_host: "127.0.0.1"
+  bind_port: 8844
+
+paths:
+  cloudflared_config: "/etc/cloudflared/config.yml"
+  fstab: "/etc/fstab"
+
+systemd:
+  cloudflared_unit: "cloudflared.service"
+  extra_units: []
+
+security:
+  jwt_secret_file: "/etc/recursiveops/jwt.secret"
+  allow_actions: true
+  require_login: true
+
+checks:
+  default_interval_seconds: 60
+  http_timeout_seconds: 5
+  log_tail_lines: 250
+
+llm:
+  enabled: true
+  provider: "ollama"
+  ollama:
+    base_url: "http://127.0.0.1:11434"
+    model: "qwen2.5:7b"
+  cloud:
+    enabled: false
+    provider: "stub"
