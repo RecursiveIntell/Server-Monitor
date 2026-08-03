@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { session, setToken } from '$lib/stores/session';
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8844/api';
+export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8844/api';
 
 export class ApiError extends Error {
   status: number;

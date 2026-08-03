@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
-  import { api } from '$lib/api/client';
+  import { get } from 'svelte/store';
+  import { api, API_BASE } from '$lib/api/client';
+  import { session } from '$lib/stores/session';
   import LogViewer from '$lib/components/LogViewer.svelte';
   import type { LLMFailureExplanation, Settings } from '$lib/api/types';
 
@@ -38,6 +40,8 @@
   let llmLoading = false;
   let llmError = '';
   let llmResult: LLMFailureExplanation | null = null;
+  let llmStreamText = '';
+  let llmStreamError = '';
 
   function splitList(value: string): string[] {
     return value
@@ -117,6 +121,83 @@
       };
       const response = await api.post<LLMFailureExplanation>('/llm/explain-failure', { payload });
       llmResult = response;
+    } catch (err) {
+      llmError = err instanceof Error ? err.message : 'LLM analysis failed.';
+    } finally {
+      llmLoading = false;
+    }
+  }
+
+  async function analyzeBundleStream() {
+    llmError = '';
+    llmStreamError = '';
+    llmStreamText = '';
+    llmResult = null;
+    llmLoading = true;
+    try {
+      if (!bundleLines.length) {
+        await loadBundle();
+      }
+      if (!bundleLines.length) {
+        llmError = 'No bundle data available for analysis.';
+        return;
+      }
+      const payload = {
+        context: lastBundleRequest ?? {
+          systemd_units: splitList(bundleUnits),
+          podman_containers: splitList(bundleContainers),
+          include_system: bundleIncludeSystem,
+          limit: Number(bundleLimit) || 500
+        },
+        bundle: bundleLines.join('\n')
+      };
+      const { token } = get(session);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${API_BASE}/llm/explain-failure/stream`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ payload })
+      });
+      if (!response.ok || !response.body) {
+        const text = await response.text();
+        throw new Error(text || 'LLM streaming failed.');
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) !== -1) {
+          const chunk = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          const line = chunk
+            .split('\n')
+            .map((l) => l.trim())
+            .find((l) => l.startsWith('data:'));
+          if (!line) continue;
+          const jsonStr = line.slice(5).trim();
+          try {
+            const event = JSON.parse(jsonStr);
+            if (event.type === 'delta') {
+              llmStreamText += event.text ?? '';
+            } else if (event.type === 'result') {
+              llmResult = event.data;
+            } else if (event.type === 'error') {
+              llmStreamError = event.message ?? 'Streaming error';
+            }
+          } catch {
+            // Ignore malformed chunks.
+          }
+        }
+      }
     } catch (err) {
       llmError = err instanceof Error ? err.message : 'LLM analysis failed.';
     } finally {
@@ -212,7 +293,7 @@
       </button>
       <button
         class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-haze/80"
-        on:click={analyzeBundle}
+        on:click={analyzeBundleStream}
         disabled={llmLoading || !$settingsQuery.data?.llm?.enabled}
       >
         {llmLoading ? 'Analyzing…' : 'Analyze with LLM'}
@@ -229,6 +310,15 @@
     </div>
     {#if llmError}
       <p class="mt-4 text-sm text-rose-300">{llmError}</p>
+    {/if}
+    {#if llmStreamError}
+      <p class="mt-4 text-sm text-rose-300">{llmStreamError}</p>
+    {/if}
+    {#if llmStreamText}
+      <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <p class="text-xs text-haze/60">LLM Stream</p>
+        <pre class="mt-2 max-h-64 overflow-auto text-xs font-mono text-haze/80">{llmStreamText}</pre>
+      </div>
     {/if}
     {#if llmResult}
       <div class="mt-4 grid gap-3 md:grid-cols-2">

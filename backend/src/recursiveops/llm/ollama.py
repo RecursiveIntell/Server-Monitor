@@ -29,6 +29,12 @@ class OllamaClient(LLMClient):
             raise LLMError("LLM prompt missing payload placeholder")
         return template.replace("{payload}", json.dumps(payload))
 
+    def build_failure_prompt(self, payload: dict) -> str:
+        return self._render_prompt("explain_failure_v1.txt", payload)
+
+    def build_diff_prompt(self, payload: dict) -> str:
+        return self._render_prompt("explain_diff_v1.txt", payload)
+
     @retry(
         stop=stop_after_attempt(2),
         wait=wait_fixed(1),
@@ -40,7 +46,12 @@ class OllamaClient(LLMClient):
         payload = {"model": self.model, "prompt": prompt, "stream": False}
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(url, json=payload)
-            response.raise_for_status()
+            if response.status_code >= 400:
+                detail = response.text.strip()
+                raise LLMError(
+                    f"Ollama request failed: {response.status_code} {response.reason_phrase}"
+                    + (f" - {detail}" if detail else "")
+                )
             data = response.json()
         return data.get("response", "")
 
@@ -54,13 +65,6 @@ class OllamaClient(LLMClient):
         prompt = self._render_prompt("explain_failure_v1.txt", payload)
         try:
             raw = await self._generate(prompt)
-        except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response else None
-            if status == 404:
-                raise LLMError(
-                    f"Ollama endpoint not found at {self.base_url}. Check the base URL and Ollama version."
-                ) from exc
-            raise LLMError(f"Ollama request failed: {exc}") from exc
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama request failed: {exc}") from exc
         data = self._parse_json(raw)
@@ -73,13 +77,6 @@ class OllamaClient(LLMClient):
         prompt = self._render_prompt("explain_diff_v1.txt", payload)
         try:
             raw = await self._generate(prompt)
-        except httpx.HTTPStatusError as exc:
-            status = exc.response.status_code if exc.response else None
-            if status == 404:
-                raise LLMError(
-                    f"Ollama endpoint not found at {self.base_url}. Check the base URL and Ollama version."
-                ) from exc
-            raise LLMError(f"Ollama request failed: {exc}") from exc
         except httpx.HTTPError as exc:
             raise LLMError(f"Ollama request failed: {exc}") from exc
         data = self._parse_json(raw)

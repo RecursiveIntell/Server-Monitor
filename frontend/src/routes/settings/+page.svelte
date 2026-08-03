@@ -21,7 +21,16 @@
   let diffError = '';
   let saveError = '';
   let saving = false;
-  let ollamaStatus: { ok: boolean; error?: string; model?: string; base_url?: string } | null = null;
+  let ollamaStatus:
+    | {
+        ok: boolean;
+        error?: string;
+        model?: string;
+        base_url?: string;
+        generate_ok?: boolean;
+        generate_error?: string | null;
+      }
+    | null = null;
   let ollamaStatusLoading = false;
   let ollamaStatusError = '';
   let cloudflaredConfig = '';
@@ -229,7 +238,9 @@
           {/if}
           {#if ollamaStatus}
             <p class={`text-sm ${ollamaStatus.ok ? 'text-neon' : 'text-rose-300'}`}>
-              {ollamaStatus.ok ? 'Ollama reachable and model found.' : `Ollama check failed: ${ollamaStatus.error ?? 'unknown error'}`}
+              {ollamaStatus.ok
+                ? 'Ollama reachable and generate test succeeded.'
+                : `Ollama check failed: ${ollamaStatus.generate_error ?? ollamaStatus.error ?? 'unknown error'}`}
             </p>
           {/if}
         </div>
