@@ -1,5 +1,7 @@
 # RecursiveOps (Server-Monitor)
 
+<!-- last-verified: 2026-10-24; scope: first-run setup/session notes; fenced commands extracted but not executed -->
+
 RecursiveOps is a local-first Fedora Server control center with a FastAPI/SQLModel backend and a Svelte frontend. It exposes inventory, health checks, logs and reviewable configuration changes. Ollama explanations are optional and advisory; the example configuration enables them, so set `llm.enabled: false` when starting without a model service.
 
 ## Implemented surfaces
@@ -56,7 +58,7 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open the local frontend and complete initial administrator setup. The `/api/setup/status` and `/api/setup/create` routes accept loopback clients only; normal API routes require login. Creating accounts and enabling host actions are operator steps, not automatic consequences of installing the package.
+Open the local frontend and complete initial administrator setup. After setup succeeds, the frontend stores the returned bearer token in browser `localStorage` under `recursiveops_token` and redirects to `/`. To remove this stored token, clear this site's browser `localStorage`. The `/api/setup/status` and `/api/setup/create` routes accept loopback clients only; normal API routes require login. Creating accounts and enabling host actions are operator steps, not automatic consequences of installing the package.
 
 ## Host installation and operational boundaries
 
